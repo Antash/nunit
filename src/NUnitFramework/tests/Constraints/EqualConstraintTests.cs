@@ -52,6 +52,14 @@ namespace NUnit.Framework.Constraints
                 new TestCaseData(double.PositiveInfinity, double.PositiveInfinity.ToString())
             };
 
+#if !NET35
+        [Test]
+        public void Complex_PassesEquality()
+        {
+            Assert.AreEqual(new System.Numerics.Complex(1, 100), new System.Numerics.Complex(1, 100));
+        }
+#endif
+
         #region DateTimeEquality
 
         public class DateTimeEquality
@@ -447,6 +455,8 @@ namespace NUnit.Framework.Constraints
             {
                 var ex = Assert.Throws<AssertionException>(() => Assert.That(value, new EqualConstraint(10000.0).Within(10.0).Percent));
                 Assert.That(ex.Message, Does.Contain("+/- 10.0d Percent"));
+                var expectedPercentDiff = (10000 - (double)value) / 100;
+                Assert.That(ex.Message, Does.Contain($"{MsgUtils.FormatValue(expectedPercentDiff)} Percent"));
             }
 
             [TestCase(9500.0f)]
@@ -463,6 +473,19 @@ namespace NUnit.Framework.Constraints
             {
                 var ex = Assert.Throws<AssertionException>(() => Assert.That(value, new EqualConstraint(10000.0f).Within(10.0f).Percent));
                 Assert.That(ex.Message, Does.Contain("+/- 10.0f Percent"));
+                double expectedPercentDiff = (10000 - (float)value) / 100;
+                Assert.That(ex.Message, Does.Contain($"{MsgUtils.FormatValue(expectedPercentDiff)} Percent"));
+            }
+
+            [TestCase(1.21)]
+            [TestCase(1.19)]
+            public void FailsOnDoublesOutsideOfAbsoluteTolerance(object value)
+            {
+                const double tolerance = 0.001;
+                var ex = Assert.Throws<AssertionException>(() => Assert.That(value, new EqualConstraint(1.2).Within(tolerance)));
+                Assert.That(ex.Message, Does.Contain($"+/- {MsgUtils.FormatValue(tolerance)}"));
+                var expectedAbsoluteDiff = 1.2 - (double)value;
+                Assert.That(ex.Message, Does.Contain($"{MsgUtils.FormatValue(expectedAbsoluteDiff)}"));
             }
 
             /// <summary>Applies both the Percent and Ulps modifiers to cause an exception</summary>
@@ -726,12 +749,12 @@ namespace NUnit.Framework.Constraints
             get
             {
                 var ptr = new System.IntPtr(0);
-                var ExampleTestA = new ExampleTest.ClassA(0);
-                var ExampleTestB = new ExampleTest.ClassB(0);
+                var exampleTestA = new ExampleTest.ClassA(0);
+                var exampleTestB = new ExampleTest.ClassB(0);
                 var clipTestA = new ExampleTest.Outer.Middle.Inner.Outer.Middle.Inner.Outer.Middle.Outer.Middle.Inner.Outer.Middle.Inner.Outer.Middle.Inner.Outer.Middle.Inner.Clip.ReallyLongClassNameShouldBeHere();
                 var clipTestB = new ExampleTest.Clip.Outer.Middle.Inner.Outer.Middle.Inner.Outer.Middle.Outer.Middle.Inner.Outer.Middle.Inner.Outer.Middle.Inner.Outer.Middle.Inner.Clip.ReallyLongClassNameShouldBeHere();
                 yield return new object[] { 0, ptr };
-                yield return new object[] { ExampleTestA, ExampleTestB };
+                yield return new object[] { exampleTestA, exampleTestB };
                 yield return new object[] { clipTestA, clipTestB };
             }
         }
